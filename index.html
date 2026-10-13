@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="es-CR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ImportaCR</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: formulario de liquidación a la izquierda, resumen fijo a la derecha; en móvil se apila y una barra inferior muestra el precio final. */
+  :root {
+    --bg: #eef2f6;
+    --surface: #ffffff;
+    --surface-2: #f6f8fb;
+    --fg: #121c26;
+    --fg-muted: #5a6978;
+    --line: #d6dde5;
+    --accent: #0e4f9c;
+    --accent-fg: #ffffff;
+    --accent-soft: #e2ecf8;
+    --good: #1f7a4d;
+    --warn: #a35a00;
+    --warn-soft: #fff3df;
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+    --radius: 6px;
+    --shadow: 0 1px 2px rgba(18, 28, 38, .06), 0 8px 24px -12px rgba(18, 28, 38, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e141b; --surface: #161e27; --surface-2: #1c2631; --fg: #e6ecf2; --fg-muted: #94a3b3;
+      --line: #2b3745; --accent: #6fa6f2; --accent-fg: #0b1a2e; --accent-soft: #1b2c42;
+      --good: #4fcf8a; --warn: #f0b35a; --warn-soft: #2c2415;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e141b; --surface: #161e27; --surface-2: #1c2631; --fg: #e6ecf2; --fg-muted: #94a3b3;
+    --line: #2b3745; --accent: #6fa6f2; --accent-fg: #0b1a2e; --accent-soft: #1b2c42;
+    --good: #4fcf8a; --warn: #f0b35a; --warn-soft: #2c2415;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 120px; }
+  @media (min-width: 960px) { .wrap { padding-block: 32px 48px; } }
+
+  header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { width: 40px; height: 40px; flex: none; }
+  .brand h1 { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; letter-spacing: -.02em; margin: 0; line-height: 1.1; }
+  .brand p { margin: 2px 0 0; color: var(--fg-muted); font-size: .9rem; }
+  .fx { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .9rem; }
+  .fx label { color: var(--fg-muted); }
+  .fx input { width: 7.5em; }
+  .fx .note { color: var(--fg-muted); font-size: .8rem; flex-basis: 100%; }
+
+  .grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+  @media (min-width: 960px) { .grid { grid-template-columns: minmax(0, 1.25fr) minmax(360px, .95fr); } }
+
+  fieldset { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 16px 18px 18px; margin: 0 0 16px; min-width: 0; }
+  legend { font-family: var(--font-display); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); padding: 0 6px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 14px; }
+  .row + .row { margin-top: 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field.wide { grid-column: 1 / -1; }
+  .field > label { font-size: .82rem; font-weight: 500; color: var(--fg-muted); }
+  .field small { color: var(--fg-muted); font-size: .76rem; line-height: 1.35; }
+  .in { display: flex; align-items: stretch; min-width: 0; }
+  .in input, .in select { flex: 1; min-width: 0; }
+  .in .unit { display: flex; align-items: center; padding: 0 9px; border: 1px solid var(--line); border-left: 0; border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface-2); color: var(--fg-muted); font-family: var(--font-mono); font-size: .78rem; white-space: nowrap; }
+  .in input:not(:last-child) { border-radius: var(--radius) 0 0 var(--radius); }
+  .in .unit.pre { border-left: 1px solid var(--line); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); }
+  .in .unit.pre + input { border-radius: 0 var(--radius) var(--radius) 0; }
+  input[type="number"], input[type="text"], select {
+    font: inherit; font-family: var(--font-mono); font-size: .95rem; color: var(--fg);
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 7px 10px; width: 100%; font-variant-numeric: tabular-nums;
+  }
+  input[type="text"] { font-family: var(--font-body); }
+  select { font-family: var(--font-body); }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .dims { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 4px; }
+  .dims span { color: var(--fg-muted); font-size: .85rem; }
+  .check { display: flex; gap: 10px; align-items: flex-start; font-size: .9rem; cursor: pointer; }
+  .check input { margin-top: 4px; accent-color: var(--accent); }
+  .check small { display: block; color: var(--fg-muted); font-size: .78rem; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .seg label { padding: 6px 12px; font-size: .85rem; cursor: pointer; background: var(--surface); color: var(--fg-muted); border-right: 1px solid var(--line); }
+  .seg label:last-child { border-right: 0; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg input:checked + label { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
+  button { font: inherit; cursor: pointer; }
+  .btn { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: var(--radius); padding: 7px 12px; font-size: .85rem; font-weight: 500; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.08); color: var(--accent-fg); }
+  .btn.quiet { border-color: transparent; color: var(--fg-muted); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .pill { display: inline-block; font-family: var(--font-mono); font-size: .74rem; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .warnbox { display: none; background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); border-radius: var(--radius); padding: 8px 12px; font-size: .85rem; margin-top: 12px; }
+  .warnbox.show { display: block; }
+
+  /* Resumen */
+  aside.summary { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); min-width: 0; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .hero { padding: 20px 20px 16px; background: var(--accent); color: var(--accent-fg); }
+  .hero .eyebrow { font-family: var(--font-display); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+  .hero .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 5vw, 2.6rem); letter-spacing: -.03em; line-height: 1.05; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .hero .sub { font-family: var(--font-mono); font-size: .85rem; opacity: .9; margin-top: 4px; }
+  .hero .meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: .82rem; opacity: .95; }
+  .hero .meta b { font-family: var(--font-mono); font-weight: 500; }
+  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+  .kpi { padding: 12px 14px; border-right: 1px solid var(--line); min-width: 0; }
+  .kpi:last-child { border-right: 0; }
+  .kpi .l { font-size: .72rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: .06em; }
+  .kpi .v { font-family: var(--font-mono); font-size: 1.02rem; font-weight: 500; margin-top: 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .kpi .v.good { color: var(--good); }
+
+  .liq { padding: 6px 0 4px; }
+  .liq h3 { font-family: var(--font-display); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-muted); margin: 12px 20px 4px; font-weight: 700; }
+  table.desglose { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .desglose td { padding: 5px 20px; vertical-align: top; }
+  .desglose td:first-child { color: var(--fg); }
+  .desglose td .base { display: block; color: var(--fg-muted); font-size: .74rem; font-family: var(--font-mono); }
+  .desglose td.n { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .desglose td.crc { color: var(--fg-muted); font-size: .82rem; }
+  .desglose tr.sum td { border-top: 1px solid var(--line); font-weight: 600; padding-top: 7px; }
+  .desglose tr.total td { background: var(--surface-2); font-weight: 700; padding: 9px 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .desglose tr.muted td { color: var(--fg-muted); }
+  .desglose tr.zero td { opacity: .45; }
+  .desglose .credit { text-decoration: line-through; opacity: .6; }
+  .foot { padding: 12px 20px 16px; font-size: .78rem; color: var(--fg-muted); line-height: 1.45; }
+  .foot p { margin: 0 0 6px; }
+
+  /* Barra móvil */
+  .mobilebar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--accent); color: var(--accent-fg); padding: 10px 16px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 -4px 16px rgba(0,0,0,.18); z-index: 5; }
+  .mobilebar .l { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
+  .mobilebar .v { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .mobilebar .u { font-family: var(--font-mono); font-size: .8rem; opacity: .9; text-align: right; }
+  @media (min-width: 960px) { .mobilebar { display: none; } }
+
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: .85rem; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 6; }
+  @media (min-width: 960px) { .toast { bottom: 24px; } }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="2" y="12" width="36" height="18" rx="2" fill="var(--accent)"></rect>
+        <rect x="2" y="18" width="36" height="6" fill="var(--surface)"></rect>
+        <rect x="2" y="20" width="36" height="2" fill="#c8102e"></rect>
+        <path d="M6 12 L20 4 L34 12" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></path>
+        <circle cx="12" cy="33" r="3" fill="var(--fg)"></circle><circle cx="28" cy="33" r="3" fill="var(--fg)"></circle>
+      </svg>
+      <div>
+        <h1>ImportaCR</h1>
+        <p>Precio de un producto importado por courier aéreo, puesto en Costa Rica</p>
+      </div>
+    </div>
+    <div class="fx">
+      <label for="tc">Tipo de cambio</label>
+      <div class="in"><span class="unit pre">₡/US$</span><input type="number" id="tc" step="0.01" min="1" value="515"></div>
+      <button class="btn" id="btnTc" type="button">Actualizar</button>
+      <span class="note" id="tcNote">Use la referencia de venta del BCCR o la de su banco.</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <form id="f" autocomplete="off" novalidate>
+
+      <fieldset>
+        <legend>1 · Producto</legend>
+        <div class="row">
+          <div class="field wide">
+            <label for="nombre">Descripción</label>
+            <input type="text" id="nombre" placeholder="Ej. Audífonos inalámbricos" value="Audífonos inalámbricos">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="precio">Precio unitario (proveedor)</label>
+            <div class="in"><span class="unit pre">US$</span><input type="number" id="precio" step="0.01" min="0" value="89.99"></div>
+          </div>
+          <div class="field">
+            <label for="cant">Cantidad</label>
+            <div class="in"><input type="number" id="cant" step="1" min="1" value="2"><span class="unit">unid.</span></div>
+          </div>
+          <div class="field">
+            <label for="extraProv">Envío interno + impuesto local</label>
+            <div class="in"><span class="unit pre">US$</span><input type="number" id="extraProv" step="0.01" min="0" value="0"></div>
+            <small>Total del pedido: envío del vendedor al casillero y sales tax, si aplica.</small>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field wide">
+            <label for="cat">Categoría arancelaria (valores orientativos)</label>
+            <select id="cat">
+              <option value="tic">Celulares, laptops, tablets · DAI 0 %</option>
+              <option value="audio" selected>Audio, accesorios y electrónica general · DAI 14 %</option>
+              <option value="ropa">Ropa y textiles · DAI 14 %</option>
+              <option value="calzado">Calzado · DAI 14 %</option>
+              <option value="juguetes">Juguetes · DAI 14 %</option>
+              <option value="cosmeticos">Perfumería y cosméticos · DAI 14 % + Selectivo 10 %</option>
+              <option value="suplementos">Suplementos y vitaminas · DAI 14 %</option>
+              <option value="herramientas">Herramientas y ferretería · DAI 5 %</option>
+              <option value="repuestos">Repuestos de vehículo · DAI 14 %</option>
+              <option value="libros">Libros impresos · DAI 0 %, sin IVA</option>
+              <option value="custom">Personalizado (editar abajo)</option>
+            </select>
+            <small>Al elegir una categoría se rellenan DAI, Selectivo e IVA. Confirme la partida en el arancel del Sistema TICA antes de cotizar en firme.</small>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>2 · Flete aéreo por courier</legend>
+        <div class="row">
+          <div class="field">
+            <label for="peso">Peso real por unidad</label>
+            <div class="in"><input type="number" id="peso" step="0.01" min="0" value="0.8"><span class="unit">lb</span></div>
+          </div>
+          <div class="field">
+            <label>Dimensiones de la caja por unidad</label>
+            <div class="dims">
+              <input type="number" id="dl" step="0.1" min="0" value="8" aria-label="Largo en pulgadas">
+              <span>×</span>
+              <input type="number" id="da" step="0.1" min="0" value="6" aria-label="Ancho en pulgadas">
+              <span>×</span>
+              <input type="number" id="dh" step="0.1" min="0" value="3" aria-label="Alto en pulgadas">
+            </div>
+            <small>Pulgadas. Peso volumétrico = L × A × H ÷ 166. Se cobra el mayor entre peso real y volumétrico.</small>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="tarifa">Tarifa del courier</label>
+            <div class="in"><span class="unit pre">US$</span><input type="number" id="tarifa" step="0.01" min="0" value="6.50"><span class="unit">/ lb</span></div>
+          </div>
+          <div class="field">
+            <label for="fijo">Cargo fijo por paquete</label>
+            <div class="in"><span class="unit pre">US$</span><input type="number" id="fijo" step="0.01" min="0" value="0"></div>
+          </div>
+          <div class="field">
+            <label for="combustible">Recargo por combustible</label>
+            <div class="in"><input type="number" id="combustible" step="0.1" min="0" value="0"><span class="unit">%</span></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="seguro">Seguro sobre FOB + flete</label>
+            <div class="in"><input type="number" id="seguro" step="0.01" min="0" value="1.5"><span class="unit">%</span></div>
+            <small>Si no se declara seguro, Aduanas aplica uno teórico. Forma parte del valor CIF.</small>
+          </div>
+          <div class="field">
+            <label for="tramite">Trámite aduanal y desalmacenaje</label>
+            <div class="in"><span class="unit pre">US$</span><input type="number" id="tramite" step="0.01" min="0" value="5"></div>
+            <small>Honorarios del courier o agente aduanal. No se grava.</small>
+          </div>
+          <div class="field">
+            <label for="entrega">Entrega local en Costa Rica</label>
+            <div class="in"><span class="unit pre">₡</span><input type="number" id="entrega" step="1" min="0" value="0"></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field wide">
+            <label class="check"><input type="checkbox" id="redondeoLb" checked> <span>Redondear el peso facturable a la libra siguiente <small>Práctica habitual de los couriers en Costa Rica.</small></span></label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>3 · Impuestos de importación</legend>
+        <div class="row">
+          <div class="field">
+            <label for="dai">DAI (arancel)</label>
+            <div class="in"><input type="number" id="dai" step="0.01" min="0" value="14"><span class="unit">% CIF</span></div>
+          </div>
+          <div class="field">
+            <label for="ley6946">Ley 6946</label>
+            <div class="in"><input type="number" id="ley6946" step="0.01" min="0" value="1"><span class="unit">% CIF</span></div>
+          </div>
+          <div class="field">
+            <label for="isc">Selectivo de consumo</label>
+            <div class="in"><input type="number" id="isc" step="0.01" min="0" value="0"><span class="unit">%</span></div>
+            <small>Base: CIF + DAI + Ley 6946.</small>
+          </div>
+          <div class="field">
+            <label for="iva">IVA</label>
+            <div class="in"><input type="number" id="iva" step="0.01" min="0" value="13"><span class="unit">%</span></div>
+            <small>Base: CIF + DAI + Ley 6946 + Selectivo.</small>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="check"><input type="checkbox" id="exo"> <span>Exoneración de pequeño envío familiar <small>Hasta US$ 500 FOB, sin fines comerciales, una vez por semestre. No aplica si va a revender.</small></span></label>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="ivaCredito"> <span>El IVA de importación es crédito fiscal <small>Si está inscrito en Hacienda, el IVA pagado en aduana se acredita y no forma parte del costo.</small></span></label>
+          </div>
+        </div>
+        <div class="warnbox" id="warnExo">La exoneración de pequeño envío solo aplica a valores FOB de hasta US$ 500 y sin carácter comercial. El valor actual la supera, así que se calculan los impuestos completos.</div>
+      </fieldset>
+
+      <fieldset>
+        <legend>4 · Margen de utilidad y precio de venta</legend>
+        <div class="row">
+          <div class="field">
+            <label for="margen">Margen deseado</label>
+            <div class="in"><input type="number" id="margen" step="0.5" min="0" max="99" value="35"><span class="unit">%</span></div>
+          </div>
+          <div class="field">
+            <label>Cómo se aplica</label>
+            <div class="seg" role="radiogroup" aria-label="Modo de margen">
+              <input type="radio" name="modo" id="modoVenta" value="venta" checked><label for="modoVenta">Sobre el precio de venta</label>
+              <input type="radio" name="modo" id="modoCosto" value="costo"><label for="modoCosto">Sobre el costo (markup)</label>
+            </div>
+            <small id="modoHint">Precio = costo ÷ (1 − margen). El 35 % de lo que cobra es utilidad.</small>
+          </div>
+          <div class="field">
+            <label for="ivaVenta">IVA en la venta</label>
+            <div class="in"><input type="number" id="ivaVenta" step="0.01" min="0" value="13"><span class="unit">%</span></div>
+          </div>
+          <div class="field">
+            <label for="redondeo">Redondear precio final</label>
+            <select id="redondeo">
+              <option value="0">Sin redondeo</option>
+              <option value="100" selected>A ₡100</option>
+              <option value="500">A ₡500</option>
+              <option value="1000">A ₡1 000</option>
+              <option value="5000">A ₡5 000</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnCopiar">Copiar cotización</button>
+        <button type="button" class="btn quiet" id="btnReset">Restablecer valores</button>
+      </div>
+    </form>
+
+    <aside class="summary">
+      <div class="card">
+        <div class="hero">
+          <div class="eyebrow">Precio de venta sugerido · por unidad · IVA incluido</div>
+          <div class="big" id="hPrecio">₡0</div>
+          <div class="sub" id="hPrecioUsd">US$ 0.00 · sin IVA ₡0</div>
+          <div class="meta">
+            <span>Costo puesto en CR <b id="hCosto">₡0</b></span>
+            <span>Utilidad <b id="hUtil">₡0</b></span>
+            <span>Factor sobre compra <b id="hFactor">0.00×</b></span>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="l">Peso facturable</div><div class="v" id="kPeso">0 lb</div></div>
+          <div class="kpi"><div class="l">Impuestos / CIF</div><div class="v" id="kTax">0 %</div></div>
+          <div class="kpi"><div class="l">Utilidad total</div><div class="v good" id="kUtil">₡0</div></div>
+        </div>
+        <div class="liq">
+          <h3 id="tituloLiq">Liquidación del envío · 2 unidades</h3>
+          <table class="desglose" aria-label="Desglose de costos">
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="foot">
+          <p>Fórmula: CIF = FOB + flete + seguro. DAI y Ley 6946 gravan el CIF. El Selectivo grava CIF + DAI + Ley 6946. El IVA grava todo lo anterior. Los honorarios de trámite y la entrega local no se gravan.</p>
+          <p>Herramienta de estimación. Las tarifas reales dependen de la partida arancelaria asignada por Aduanas y de la tarifa de su courier.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="mobilebar" aria-hidden="true">
+  <div><div class="l">Precio sugerido · unidad</div><div class="v" id="mPrecio">₡0</div></div>
+  <div class="u" id="mCosto">costo ₡0</div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  var PRESETS = {
+    tic:          { dai: 0,  isc: 0,  iva: 13 },
+    audio:        { dai: 14, isc: 0,  iva: 13 },
+    ropa:         { dai: 14, isc: 0,  iva: 13 },
+    calzado:      { dai: 14, isc: 0,  iva: 13 },
+    juguetes:     { dai: 14, isc: 0,  iva: 13 },
+    cosmeticos:   { dai: 14, isc: 10, iva: 13 },
+    suplementos:  { dai: 14, isc: 0,  iva: 13 },
+    herramientas: { dai: 5,  isc: 0,  iva: 13 },
+    repuestos:    { dai: 14, isc: 0,  iva: 13 },
+    libros:       { dai: 0,  isc: 0,  iva: 0 }
+  };
+
+  var FIELDS = ['tc','nombre','precio','cant','extraProv','cat','peso','dl','da','dh','tarifa','fijo','combustible',
+    'seguro','tramite','entrega','redondeoLb','dai','ley6946','isc','iva','exo','ivaCredito','margen','ivaVenta','redondeo'];
+  var DEFAULTS = {};
+  FIELDS.forEach(function (id) { var el = $(id); DEFAULTS[id] = el.type === 'checkbox' ? el.checked : el.value; });
+  var DEFAULT_MODO = 'venta';
+
+  function num(id) { var v = parseFloat($(id).value); return isFinite(v) ? v : 0; }
+  function pct(id) { return num(id) / 100; }
+
+  var fmtCRC = new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 });
+  var fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  var fmtNum = new Intl.NumberFormat('es-CR', { maximumFractionDigits: 2 });
+  function crc(v) { return fmtCRC.format(Math.round(v)); }
+  function usd(v) { return 'US$ ' + fmtUSD.format(v).replace('$', ''); }
+  function p(v) { return fmtNum.format(v * 100) + ' %'; }
+
+  function calcular() {
+    var tc = Math.max(num('tc'), 0.01);
+    var cant = Math.max(Math.floor(num('cant')), 1);
+    var modo = $('modoCosto').checked ? 'costo' : 'venta';
+
+    // FOB
+    var precioUnit = num('precio');
+    var fobProd = precioUnit * cant;
+    var extraProv = num('extraProv');
+    var fob = fobProd + extraProv;
+
+    // Flete
+    var volUnit = (num('dl') * num('da') * num('dh')) / 166;
+    var pesoUnit = Math.max(num('peso'), volUnit);
+    var pesoFact = pesoUnit * cant;
+    if ($('redondeoLb').checked) pesoFact = Math.ceil(pesoFact - 1e-9);
+    var fleteBase = pesoFact * num('tarifa') + num('fijo');
+    var fleteComb = fleteBase * pct('combustible');
+    var flete = fleteBase + fleteComb;
+
+    // Seguro y CIF
+    var seguro = (fob + flete) * pct('seguro');
+    var cif = fob + flete + seguro;
+
+    // Impuestos
+    var exoPedida = $('exo').checked;
+    var exoAplica = exoPedida && fob <= 500;
+    var dai = exoAplica ? 0 : cif * pct('dai');
+    var ley = exoAplica ? 0 : cif * pct('ley6946');
+    var baseIsc = cif + dai + ley;
+    var isc = exoAplica ? 0 : baseIsc * pct('isc');
+    var baseIva = baseIsc + isc;
+    var ivaImp = exoAplica ? 0 : baseIva * pct('iva');
+    var impuestos = dai + ley + isc + ivaImp;
+    var ivaCredito = $('ivaCredito').checked;
+    var impuestosCosto = impuestos - (ivaCredito ? ivaImp : 0);
+
+    // Otros
+    var tramite = num('tramite');
+    var entregaCrc = num('entrega');
+    var entregaUsd = entregaCrc / tc;
+
+    // Costo total
+    var costoUsd = fob + flete + seguro + impuestosCosto + tramite + entregaUsd;
+    var costoCrc = costoUsd * tc;
+    var costoUnitCrc = costoCrc / cant;
+
+    // Precio de venta
+    var m = Math.min(Math.max(pct('margen'), 0), 0.99);
+    var ventaSinIvaUnit = modo === 'venta' ? costoUnitCrc / (1 - m) : costoUnitCrc * (1 + m);
+    var ivaV = pct('ivaVenta');
+    var ventaConIvaUnit = ventaSinIvaUnit * (1 + ivaV);
+    var red = parseInt($('redondeo').value, 10) || 0;
+    if (red > 0) {
+      ventaConIvaUnit = Math.ceil(ventaConIvaUnit / red) * red;
+      ventaSinIvaUnit = ventaConIvaUnit / (1 + ivaV);
+    }
+    var utilUnit = ventaSinIvaUnit - costoUnitCrc;
+
+    return {
+      tc: tc, cant: cant, modo: modo, m: m, nombre: $('nombre').value.trim(),
+      precioUnit: precioUnit, fobProd: fobProd, extraProv: extraProv, fob: fob,
+      volUnit: volUnit, pesoUnit: pesoUnit, pesoFact: pesoFact, fleteBase: fleteBase, fleteComb: fleteComb, flete: flete,
+      seguro: seguro, cif: cif, dai: dai, ley: ley, isc: isc, ivaImp: ivaImp, impuestos: impuestos,
+      exoPedida: exoPedida, exoAplica: exoAplica, ivaCredito: ivaCredito,
+      tramite: tramite, entregaCrc: entregaCrc, entregaUsd: entregaUsd,
+      costoUsd: costoUsd, costoCrc: costoCrc, costoUnitCrc: costoUnitCrc,
+      ventaSinIvaUnit: ventaSinIvaUnit, ventaConIvaUnit: ventaConIvaUnit, ivaVentaUnit: ventaConIvaUnit - ventaSinIvaUnit,
+      utilUnit: utilUnit, utilTotal: utilUnit * cant,
+      factor: precioUnit > 0 ? ventaConIvaUnit / (precioUnit * tc) : 0
+    };
+  }
+
+  function fila(label, base, vUsd, tc, cls) {
+    var tr = document.createElement('tr');
+    if (cls) tr.className = cls;
+    if (Math.abs(vUsd) < 0.005 && !/sum|total/.test(cls || '')) tr.className += ' zero';
+    var td1 = document.createElement('td');
+    td1.textContent = label;
+    if (base) { var s = document.createElement('span'); s.className = 'base'; s.textContent = base; td1.appendChild(s); }
+    var td2 = document.createElement('td'); td2.className = 'n'; td2.textContent = usd(vUsd);
+    var td3 = document.createElement('td'); td3.className = 'n crc'; td3.textContent = crc(vUsd * tc);
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+    return tr;
+  }
+
+  function render() {
+    var r = calcular();
+    var tb = $('tbody');
+    tb.textContent = '';
+
+    tb.appendChild(fila('Mercancía (' + r.cant + ' × ' + usd(r.precioUnit) + ')', null, r.fobProd, r.tc));
+    tb.appendChild(fila('Envío interno e impuesto local', null, r.extraProv, r.tc));
+    tb.appendChild(fila('Valor FOB', null, r.fob, r.tc, 'sum'));
+    tb.appendChild(fila('Flete courier', fmtNum.format(r.pesoFact) + ' lb × ' + usd(num('tarifa')) + (num('fijo') ? ' + ' + usd(num('fijo')) : '') + (r.fleteComb ? ' + combustible' : ''), r.flete, r.tc));
+    tb.appendChild(fila('Seguro', p(pct('seguro')) + ' de FOB + flete', r.seguro, r.tc));
+    tb.appendChild(fila('Valor CIF (base imponible)', null, r.cif, r.tc, 'sum'));
+    tb.appendChild(fila('DAI', p(pct('dai')) + ' del CIF', r.dai, r.tc));
+    tb.appendChild(fila('Ley 6946', p(pct('ley6946')) + ' del CIF', r.ley, r.tc));
+    tb.appendChild(fila('Selectivo de consumo', p(pct('isc')) + ' de CIF + DAI + Ley 6946', r.isc, r.tc));
+    var ivaRow = fila('IVA de importación' + (r.ivaCredito ? ' (crédito fiscal, no suma al costo)' : ''), p(pct('iva')) + ' de CIF + DAI + Ley 6946 + Selectivo', r.ivaImp, r.tc);
+    if (r.ivaCredito) { ivaRow.querySelectorAll('td.n').forEach(function (td) { td.classList.add('credit'); }); }
+    tb.appendChild(ivaRow);
+    tb.appendChild(fila('Total impuestos', r.exoAplica ? 'Exonerado como pequeño envío' : p(r.cif > 0 ? r.impuestos / r.cif : 0) + ' del CIF', r.impuestos, r.tc, 'sum'));
+    tb.appendChild(fila('Trámite aduanal y desalmacenaje', null, r.tramite, r.tc));
+    tb.appendChild(fila('Entrega local', null, r.entregaUsd, r.tc));
+    tb.appendChild(fila('Costo total puesto en Costa Rica', r.cant > 1 ? crc(r.costoUnitCrc) + ' por unidad' : null, r.costoUsd, r.tc, 'total'));
+    tb.appendChild(fila('Utilidad (' + fmtNum.format(r.m * 100) + ' % ' + (r.modo === 'venta' ? 'sobre venta' : 'sobre costo') + ')', null, r.utilTotal / r.tc, r.tc));
+    tb.appendChild(fila('Precio de venta sin IVA', null, r.ventaSinIvaUnit * r.cant / r.tc, r.tc, 'sum'));
+    tb.appendChild(fila('IVA en la venta', p(pct('ivaVenta')), r.ivaVentaUnit * r.cant / r.tc, r.tc));
+    tb.appendChild(fila('Precio de venta final (' + r.cant + ' unid.)', r.cant > 1 ? crc(r.ventaConIvaUnit) + ' por unidad' : null, r.ventaConIvaUnit * r.cant / r.tc, r.tc, 'total'));
+
+    $('tituloLiq').textContent = 'Liquidación del envío · ' + r.cant + (r.cant === 1 ? ' unidad' : ' unidades') + (r.nombre ? ' · ' + r.nombre : '');
+    $('hPrecio').textContent = crc(r.ventaConIvaUnit);
+    $('hPrecioUsd').textContent = usd(r.ventaConIvaUnit / r.tc) + ' · sin IVA ' + crc(r.ventaSinIvaUnit);
+    $('hCosto').textContent = crc(r.costoUnitCrc);
+    $('hUtil').textContent = crc(r.utilUnit);
+    $('hFactor').textContent = fmtNum.format(r.factor) + '×';
+    $('kPeso').textContent = fmtNum.format(r.pesoFact) + ' lb' + (r.volUnit > num('peso') ? ' (vol.)' : '');
+    $('kTax').textContent = r.exoAplica ? 'Exonerado' : p(r.cif > 0 ? r.impuestos / r.cif : 0);
+    $('kUtil').textContent = crc(r.utilTotal);
+    $('mPrecio').textContent = crc(r.ventaConIvaUnit);
+    $('mCosto').textContent = 'costo ' + crc(r.costoUnitCrc) + '\nutilidad ' + crc(r.utilUnit);
+    $('warnExo').classList.toggle('show', r.exoPedida && !r.exoAplica);
+    $('modoHint').textContent = r.modo === 'venta'
+      ? 'Precio = costo ÷ (1 − margen). El ' + fmtNum.format(r.m * 100) + ' % de lo que cobra es utilidad.'
+      : 'Precio = costo × (1 + margen). Gana el ' + fmtNum.format(r.m * 100) + ' % sobre lo que le costó.';
+    guardar();
+    return r;
+  }
+
+  // Presets de categoría
+  $('cat').addEventListener('change', function () {
+    var pr = PRESETS[this.value];
+    if (!pr) return;
+    $('dai').value = pr.dai; $('isc').value = pr.isc; $('iva').value = pr.iva;
+    render();
+  });
+  ['dai', 'isc', 'iva'].forEach(function (id) {
+    $(id).addEventListener('input', function () { $('cat').value = 'custom'; });
+  });
+
+  document.getElementById('f').addEventListener('input', render);
+  document.getElementById('f').addEventListener('change', render);
+  $('tc').addEventListener('input', render);
+  document.getElementById('f').addEventListener('submit', function (e) { e.preventDefault(); });
+
+  // Tipo de cambio
+  $('btnTc').addEventListener('click', function () {
+    var note = $('tcNote');
+    note.textContent = 'Consultando…';
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctrl) ctrl.abort(); }, 6000);
+    fetch('https://open.er-api.com/v6/latest/USD', ctrl ? { signal: ctrl.signal } : {})
+      .then(function (res) { return res.json(); })
+      .then(function (j) {
+        clearTimeout(t);
+        var v = j && j.rates && j.rates.CRC;
+        if (!v) throw new Error('sin dato');
+        $('tc').value = v.toFixed(2);
+        note.textContent = 'Referencia internacional del ' + new Date().toLocaleDateString('es-CR') + '. Ajuste al tipo de venta de su banco si difiere.';
+        render();
+      })
+      .catch(function () {
+        clearTimeout(t);
+        note.textContent = 'No se pudo consultar en línea desde aquí. Ingrese el tipo de cambio de venta del BCCR manualmente.';
+      });
+  });
+
+  // Copiar cotización
+  $('btnCopiar').addEventListener('click', function () {
+    var r = calcular();
+    var L = [];
+    L.push('COTIZACIÓN DE IMPORTACIÓN · ' + (r.nombre || 'Producto') + ' · ' + r.cant + ' unid.');
+    L.push('Tipo de cambio: ₡' + fmtNum.format(r.tc) + ' por US$');
+    L.push('');
+    L.push('Valor FOB: ' + usd(r.fob));
+    L.push('Flete courier (' + fmtNum.format(r.pesoFact) + ' lb): ' + usd(r.flete));
+    L.push('Seguro: ' + usd(r.seguro));
+    L.push('Valor CIF: ' + usd(r.cif));
+    L.push('DAI ' + p(pct('dai')) + ': ' + usd(r.dai));
+    L.push('Ley 6946 ' + p(pct('ley6946')) + ': ' + usd(r.ley));
+    L.push('Selectivo ' + p(pct('isc')) + ': ' + usd(r.isc));
+    L.push('IVA importación ' + p(pct('iva')) + ': ' + usd(r.ivaImp) + (r.ivaCredito ? ' (crédito fiscal)' : ''));
+    L.push('Total impuestos: ' + usd(r.impuestos) + (r.exoAplica ? ' (exonerado)' : ''));
+    L.push('Trámite y desalmacenaje: ' + usd(r.tramite));
+    L.push('Entrega local: ' + crc(r.entregaCrc));
+    L.push('');
+    L.push('COSTO PUESTO EN COSTA RICA: ' + crc(r.costoCrc) + ' (' + usd(r.costoUsd) + ')');
+    L.push('Costo por unidad: ' + crc(r.costoUnitCrc));
+    L.push('Margen ' + fmtNum.format(r.m * 100) + ' % ' + (r.modo === 'venta' ? 'sobre venta' : 'sobre costo'));
+    L.push('Precio de venta por unidad sin IVA: ' + crc(r.ventaSinIvaUnit));
+    L.push('PRECIO DE VENTA POR UNIDAD CON IVA: ' + crc(r.ventaConIvaUnit) + ' (' + usd(r.ventaConIvaUnit / r.tc) + ')');
+    L.push('Utilidad total: ' + crc(r.utilTotal));
+    var txt = L.join('\n');
+    var done = function () { toast('Cotización copiada'); };
+    var fail = function () {
+      var ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('Cotización copiada'); } catch (e) { toast('No se pudo copiar'); }
+      document.body.removeChild(ta);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fail); else fail();
+  });
+
+  $('btnReset').addEventListener('click', function () {
+    FIELDS.forEach(function (id) { var el = $(id); if (el.type === 'checkbox') el.checked = DEFAULTS[id]; else el.value = DEFAULTS[id]; });
+    $('modoVenta').checked = DEFAULT_MODO === 'venta';
+    $('modoCosto').checked = DEFAULT_MODO === 'costo';
+    render();
+    toast('Valores restablecidos');
+  });
+
+  var toastT;
+  function toast(msg) {
+    var el = $('toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+
+  // Persistencia local (solo comodidad de este navegador)
+  var KEY = 'importacr.v1';
+  function guardar() {
+    try {
+      var o = {};
+      FIELDS.forEach(function (id) { var el = $(id); o[id] = el.type === 'checkbox' ? el.checked : el.value; });
+      o.modo = $('modoCosto').checked ? 'costo' : 'venta';
+      localStorage.setItem(KEY, JSON.stringify(o));
+    } catch (e) { /* sin almacenamiento */ }
+  }
+  function cargar() {
+    try {
+      var o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o) return;
+      FIELDS.forEach(function (id) { if (!(id in o)) return; var el = $(id); if (el.type === 'checkbox') el.checked = !!o[id]; else el.value = o[id]; });
+      if (o.modo === 'costo') $('modoCosto').checked = true; else $('modoVenta').checked = true;
+    } catch (e) { /* sin almacenamiento */ }
+  }
+
+  cargar();
+  render();
+})();
+</script>
+</body>
+</html>
